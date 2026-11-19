@@ -1,0 +1,23 @@
+[
+  {"id": "s1", "message": "Is my room at the Skylight confirmed? Ref ET-5520", "category": "status", "ref": "ET-5520", "must_include": ["confirmed"]},
+  {"id": "s2", "message": "what time is pickup for et3301", "category": "status", "ref": "ET-3301", "must_include": ["19:00"]},
+  {"id": "s3", "message": "How do I get to my hotel? My booking is ET-5520", "category": "status", "ref": "ET-5520", "must_include": ["Gate B"]},
+  {"id": "s4", "message": "Is ET-4471 confirmed?", "category": "status", "ref": "ET-4471", "must_include": ["pending"]},
+  {"id": "s5", "message": "Status of ET-9910 please", "category": "status", "ref": "ET-9910", "must_include": [["cancelled", "canceled"]]},
+  {"id": "s6", "message": "Is my hotel booked? Reference ET-0000", "category": "status", "ref": "ET-0000", "must_include": [["not find", "no booking", "couldn't find", "could not find", "not found", "unable to find", "can't find"]]},
+  {"id": "s7", "message": "I'm at the transfer desk now and nobody can find my reservation", "category": "status", "urgent": true, "must_include": ["reference"]},
+  {"id": "c1", "message": "Please cancel my hotel ET-3301, my uncle will pick me up", "category": "cancel", "ref": "ET-3301", "urgent": false, "pause": true},
+  {"id": "c2", "message": "I don't need the room anymore. ET-4471", "category": "cancel", "ref": "ET-4471", "pause": true},
+  {"id": "c3", "message": "cancel et5520", "category": "cancel", "ref": "ET-5520", "pause": true},
+  {"id": "c4", "message": "I want to cancel my booking", "category": "cancel", "pause": false, "must_include": ["reference"]},
+  {"id": "p1", "message": "Do I get a free hotel if my connection is 10 hours?", "category": "policy", "must_include": ["8", "24"]},
+  {"id": "p2", "message": "My layover is only 5 hours, can I get a room?", "category": "policy", "must_include": [["8 hours", "not qualify", "do not qualify", "doesn't qualify", "does not qualify", "not eligible"]]},
+  {"id": "p3", "message": "Are meals included at the transit hotel?", "category": "policy", "must_include": ["dinner", "breakfast"]},
+  {"id": "p4", "message": "Do I need a visa to go to the hotel?", "category": "policy", "must_include": ["visa"]},
+  {"id": "p5", "message": "If a hotel bus doesn't show up, what should passengers do?", "category": "policy", "must_include": [["30 minutes", "taxi voucher"]]},
+  {"id": "p6", "message": "Can I bring my cat to the hotel?", "category": "policy", "must_include": [["couldn't find", "could not find", "staff"]]},
+  {"id": "m1", "message": "The shuttle never came and I waited two hours at the airport!", "category": "complaint"},
+  {"id": "m2", "message": "The room at Golden Tulip last week was dirty and the staff were rude.", "category": "complaint", "urgent": false},
+  {"id": "o1", "message": "hi", "category": "other"},
+  {"id": "o2", "message": "thanks, that's all I needed", "category": "other"}
+]

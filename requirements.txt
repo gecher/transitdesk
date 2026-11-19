@@ -1,0 +1,9 @@
+langgraph
+langgraph-checkpoint-sqlite
+langchain-google-genai
+langchain-groq
+python-dotenv
+rank-bm25
+fastapi
+uvicorn
+httpx
