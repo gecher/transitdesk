@@ -28,6 +28,7 @@ from langgraph.types import Command
 from pydantic import BaseModel, Field, field_validator
 
 import db
+from llm import available_providers
 from step6_desk import graph, pending_requests   # also loads .env through llm.py
 
 STAFF_KEY = os.getenv("STAFF_API_KEY", "")
@@ -42,9 +43,10 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 app = FastAPI(title="TransitDesk API", version="1.0")
 
 try:
-    db.ensure_usage_table()
+    if db.ensure_schema():                   # a brand-new database gets the demo data
+        print("Database was empty: created tables and loaded the demo data.")
 except Exception as e:                       # don't block start-up; /health will show the problem
-    print("could not prepare chat_usage table:", e)
+    print("could not prepare the database:", e)
 
 
 # ======================= helpers =======================
@@ -167,7 +169,7 @@ class Decision(BaseModel):
     confirm_ref: str = ""     # required when the request carries a warning
 
 
-MEMORY_DB = Path(__file__).with_name("memory.db")
+MEMORY_DB = db.DATA_DIR / "memory.db"
 
 
 def conversation_ids() -> list[str]:
@@ -362,7 +364,13 @@ def health():
         database = "ok"
     except Exception as e:
         database = f"error: {str(e)[:120]}"
-    return {"database": database, "storage": "postgres" if db.USE_POSTGRES else "sqlite",
+    if db.USE_POSTGRES:
+        storage = "postgres"
+    elif os.getenv("VERCEL"):
+        storage = "sqlite in /tmp: TEMPORARY, set DATABASE_URL to keep data"
+    else:
+        storage = "sqlite"
+    return {"database": database, "storage": storage, "llm_providers": available_providers(),
             "staff_key_set": bool(STAFF_KEY), "public_read": PUBLIC_READ}
 
 

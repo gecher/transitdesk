@@ -13,7 +13,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.types import Command, interrupt
 from pydantic import Field
 
-from db import USE_POSTGRES, execute, pool, query
+from db import DATA_DIR, USE_POSTGRES, execute, pool, query
 from llm import overload_retry, with_backup
 from step2_llm import Classification
 from step3_agent import SYSTEM as AGENT_SYSTEM, llm_with_tools
@@ -204,7 +204,7 @@ if USE_POSTGRES:
     checkpointer = PostgresSaver(pool())
     checkpointer.setup()                 # creates the checkpoint tables once; safe to repeat
 else:
-    conn = sqlite3.connect("memory.db", check_same_thread=False)
+    conn = sqlite3.connect(DATA_DIR / "memory.db", check_same_thread=False)
     checkpointer = SqliteSaver(conn)
 graph = builder.compile(checkpointer=checkpointer)
 

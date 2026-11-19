@@ -16,7 +16,9 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 USE_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
-DB_PATH = Path(__file__).with_name("bookings.db")
+# On Vercel only /tmp is writable. Without DATABASE_URL, data there is TEMPORARY (lost on restart).
+DATA_DIR = Path("/tmp") if os.getenv("VERCEL") else Path(__file__).parent
+DB_PATH = DATA_DIR / "bookings.db"
 
 STATUSES = ("CONFIRMED", "PENDING", "CANCELLED")
 
@@ -122,6 +124,20 @@ def init_db() -> None:
     for booking in BOOKINGS:
         execute("INSERT INTO bookings VALUES (?,?,?,?,?,?,?)", booking)
     ensure_usage_table()
+
+
+def ensure_schema() -> bool:
+    """Create and fill the tables if they don't exist yet (first start on a new database).
+    Returns True if it had to create them. Never touches existing data."""
+    if USE_POSTGRES:
+        exists = query("SELECT to_regclass('public.bookings') IS NOT NULL AS ok")[0]["ok"]
+    else:
+        exists = bool(query("SELECT name FROM sqlite_master WHERE type='table' AND name='bookings'"))
+    if not exists:
+        init_db()
+        return True
+    ensure_usage_table()
+    return False
 
 
 def ensure_usage_table() -> None:
