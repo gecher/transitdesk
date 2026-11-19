@@ -6,7 +6,7 @@ A passenger writes a message. TransitDesk works out what they need, looks up the
 
 > All data is fictional: bookings, hotels, phone numbers and the policy were written for this demo.
 
-**Live demo:** https://YOUR-PROJECT.vercel.app
+**Live demo:** https://transitdesk-tau.vercel.app
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue) ![LangGraph](https://img.shields.io/badge/LangGraph-1.2-purple) ![FastAPI](https://img.shields.io/badge/FastAPI-API-teal) ![React](https://img.shields.io/badge/React-19-61dafb) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![LLM](https://img.shields.io/badge/LLM-Groq%20gpt--oss--120b%20%7C%20Gemini-orange)
 
