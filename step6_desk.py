@@ -13,7 +13,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.types import Command, interrupt
 from pydantic import Field
 
-from db import query
+from db import USE_POSTGRES, execute, pool, query
 from llm import overload_retry, with_backup
 from step2_llm import Classification
 from step3_agent import SYSTEM as AGENT_SYSTEM, llm_with_tools
@@ -152,7 +152,7 @@ def cancel(state: DeskState) -> dict:
     # ---- RESUMED: decision is whatever the staff member sent with Command(resume=...) ----
 
     if decision.get("approved"):
-        query("UPDATE bookings SET status = 'CANCELLED' WHERE ref = ?", (booking["ref"],))
+        execute("UPDATE bookings SET status = 'CANCELLED' WHERE ref = ?", (booking["ref"],))
         text = (f"Your booking {booking['ref']} at {booking['hotel']} for the night of "
                 f"{booking['night']} has been cancelled.")
     else:
@@ -197,9 +197,16 @@ builder.add_edge("tools", "status_agent")                        # the agent loo
 for node in ("policy", "complaint", "cancel", "other"):
     builder.add_edge(node, END)
 
-# ---------- 6. Memory: save every step to memory.db (interrupt() needs this) ----------
-conn = sqlite3.connect("memory.db", check_same_thread=False)
-graph = builder.compile(checkpointer=SqliteSaver(conn))
+# ---------- 6. Memory: save every step (interrupt() needs this) ----------
+# Local: memory.db (SQLite). On Vercel: Postgres, because the server's disk is not kept.
+if USE_POSTGRES:
+    from langgraph.checkpoint.postgres import PostgresSaver
+    checkpointer = PostgresSaver(pool())
+    checkpointer.setup()                 # creates the checkpoint tables once; safe to repeat
+else:
+    conn = sqlite3.connect("memory.db", check_same_thread=False)
+    checkpointer = SqliteSaver(conn)
+graph = builder.compile(checkpointer=checkpointer)
 
 
 # ---------- 7. Human in the loop: the staff side ----------

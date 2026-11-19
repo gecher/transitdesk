@@ -1,7 +1,10 @@
 langgraph
 langgraph-checkpoint-sqlite
+langgraph-checkpoint-postgres
 langchain-google-genai
 langchain-groq
+psycopg[binary]
+psycopg-pool
 python-dotenv
 rank-bm25
 fastapi

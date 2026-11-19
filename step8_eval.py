@@ -141,7 +141,11 @@ def print_summary(summary: dict) -> None:
     print("=" * 46)
 
 
-def evaluate(label: str, only: str, delay: float) -> None:
+def evaluate(label: str, only: str, delay: float, allow_postgres: bool) -> None:
+    if db.USE_POSTGRES and not allow_postgres:
+        raise SystemExit("DATABASE_URL points to Postgres. The evaluation RESETS the bookings, "
+                         "which would wipe the live demo data.\nRun it locally without "
+                         "DATABASE_URL, or add --allow-postgres if this is a test database.")
     db.init_db()                          # same starting data for every run
     reference = reference_text()
     run_id = uuid.uuid4().hex[:6]
@@ -222,10 +226,12 @@ if __name__ == "__main__":
     parser.add_argument("--delay", type=float, default=2.0, help="seconds between cases")
     parser.add_argument("--compare", nargs=2, metavar=("A", "B"))
     parser.add_argument("--report", metavar="LABEL", help="print a Markdown table of a run")
+    parser.add_argument("--allow-postgres", action="store_true",
+                        help="allow running against DATABASE_URL (it resets the bookings)")
     args = parser.parse_args()
     if args.report:
         report(args.report)
     elif args.compare:
         compare(*args.compare)
     else:
-        evaluate(args.label, args.only, args.delay)
+        evaluate(args.label, args.only, args.delay, args.allow_postgres)

@@ -7,8 +7,6 @@ import httpx
 
 API = "http://127.0.0.1:8000"
 thread = sys.argv[1] if len(sys.argv) > 1 else uuid.uuid4().hex[:8]
-print(f"TransitDesk via API  (thread: {thread})   type /quit to stop")
-
 
 def send(text: str) -> None:
     with httpx.stream("POST", f"{API}/chat", json={"thread_id": thread, "message": text},
@@ -36,13 +34,19 @@ def send(text: str) -> None:
         print(f"\n      path: {' -> '.join(nodes)}")
 
 
-while True:
-    text = input("\nYou: ").strip()
-    if text == "/quit":
-        break
-    if not text:
-        continue
-    try:
-        send(text)
-    except httpx.ConnectError:
-        print("Desk: [cannot reach the API] Is it running?  uvicorn api:app --reload")
+def main() -> None:
+    print(f"TransitDesk via API  (thread: {thread})   type /quit to stop")
+    while True:
+        text = input("\nYou: ").strip()
+        if text == "/quit":
+            break
+        if not text:
+            continue
+        try:
+            send(text)
+        except httpx.ConnectError:
+            print("Desk: [cannot reach the API] Is it running?  uvicorn api:app --reload")
+
+
+if __name__ == "__main__":
+    main()
