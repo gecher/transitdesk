@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError } from "../api";
 import type { Notify } from "../hooks";
 import type { Hotel } from "../types";
-import { ConfirmButton, Locked } from "./common";
+import { Locked } from "./common";
+import { ConfirmDialog, Field, Modal } from "./Modal";
 
 interface Props {
   staffKey: string;
@@ -12,37 +13,89 @@ interface Props {
   onChanged: () => void;
 }
 
-function HotelForm({ initial, onSave, onCancel }: {
+function HotelDialog({ initial, staffKey, onClose, onSaved }: {
   initial?: Hotel;
-  onSave: (h: Hotel) => void;
-  onCancel: () => void;
+  staffKey: string;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
+  const isNew = !initial;
   const [h, setH] = useState<Hotel>({
     name: initial?.name ?? "",
     location: initial?.location ?? "",
     shuttle: initial?.shuttle ?? "",
     phone: initial?.phone ?? "",
   });
-  const set = (key: keyof Hotel) => (e: ChangeEvent<HTMLInputElement>) => setH({ ...h, [key]: e.target.value });
+  const [errors, setErrors] = useState<Partial<Record<keyof Hotel, string>>>({});
+  const [serverError, setServerError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const set = (key: keyof Hotel) => (value: string) => {
+    setH((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const found: Partial<Record<keyof Hotel, string>> = {};
+    if (h.name.trim().length < 2) found.name = "Enter the hotel name";
+    if (h.location.trim().length < 2) found.location = "Where is it?";
+    if (h.shuttle.trim().length < 2) found.shuttle = "How do passengers get there?";
+    setErrors(found);
+    if (Object.keys(found).length) return;
+    setBusy(true);
+    setServerError("");
+    try {
+      const body = { name: h.name.trim(), location: h.location.trim(), shuttle: h.shuttle.trim(), phone: h.phone.trim() };
+      await api(isNew ? "/api/hotels" : `/api/hotels/${encodeURIComponent(initial!.name)}`, staffKey, {
+        method: isNew ? "POST" : "PUT",
+        body: JSON.stringify(body),
+      });
+      onSaved();
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : "Could not save");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <tr>
-      <td className="ref">{initial ? h.name : <input name="name" value={h.name} onChange={set("name")} aria-label="Hotel name" />}</td>
-      <td><input name="location" value={h.location} onChange={set("location")} aria-label="Location" /></td>
-      <td><input name="shuttle" value={h.shuttle} onChange={set("shuttle")} aria-label="Getting there" /></td>
-      <td><input name="phone" value={h.phone} onChange={set("phone")} aria-label="Phone" /></td>
-      <td className="num">{initial?.bookings ?? ""}</td>
-      <td className="actions">
-        <button type="button" className="btn small ok" onClick={() => onSave(h)}>Save</button>{" "}
-        <button type="button" className="btn small ghost" onClick={onCancel}>Cancel</button>
-      </td>
-    </tr>
+    <Modal
+      title={isNew ? "Add a partner hotel" : `Edit ${initial!.name}`}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+          <button type="submit" form="hotel-form" className="btn primary" disabled={busy}>
+            {busy ? "Saving…" : isNew ? "Add hotel" : "Save changes"}
+          </button>
+        </>
+      }
+    >
+      <form id="hotel-form" className="form-stack" onSubmit={submit} noValidate>
+        {serverError && <div className="form-alert" role="alert">{serverError}</div>}
+        <Field label="Hotel name" error={errors.name} hint={isNew ? undefined : "Names can't be changed"}>
+          <input name="name" value={h.name} disabled={!isNew} onChange={(e) => set("name")(e.target.value)} autoComplete="off" />
+        </Field>
+        <Field label="Location" error={errors.location}>
+          <input name="location" value={h.location} onChange={(e) => set("location")(e.target.value)} placeholder="Bole Road, 3 km from airport" />
+        </Field>
+        <Field label="Getting there" error={errors.shuttle} hint="The agent reads this to give directions">
+          <textarea name="shuttle" rows={2} value={h.shuttle} onChange={(e) => set("shuttle")(e.target.value)} />
+        </Field>
+        <Field label="Phone">
+          <input name="phone" value={h.phone} onChange={(e) => set("phone")(e.target.value)} />
+        </Field>
+      </form>
+    </Modal>
   );
 }
 
+type Dialog = { kind: "add" } | { kind: "edit"; hotel: Hotel } | { kind: "delete"; hotel: Hotel } | null;
+
 export function Hotels({ staffKey, canRead, version, notify, onChanged }: Props) {
   const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [busy, setBusy] = useState(false);
   const [locked, setLocked] = useState(false);
   const canEdit = !!staffKey;
 
@@ -60,29 +113,18 @@ export function Hotels({ staffKey, canRead, version, notify, onChanged }: Props)
     void load();
   }, [load, version]);
 
-  async function save(h: Hotel, isNew: boolean) {
+  async function remove(h: Hotel) {
+    setBusy(true);
     try {
-      const { name, location, shuttle, phone } = h;
-      await api(isNew ? "/api/hotels" : `/api/hotels/${encodeURIComponent(name)}`, staffKey, {
-        method: isNew ? "POST" : "PUT",
-        body: JSON.stringify({ name, location, shuttle, phone }),
-      });
-      setEditing(null);
-      setAdding(false);
-      notify("Hotel saved");
-      onChanged();
-    } catch (e) {
-      notify(e instanceof Error ? e.message : "Could not save", true);
-    }
-  }
-
-  async function remove(name: string) {
-    try {
-      await api(`/api/hotels/${encodeURIComponent(name)}`, staffKey, { method: "DELETE" });
-      notify(`${name} deleted`);
+      await api(`/api/hotels/${encodeURIComponent(h.name)}`, staffKey, { method: "DELETE" });
+      notify(`${h.name} deleted`);
+      setDialog(null);
       onChanged();
     } catch (e) {
       notify(e instanceof Error ? e.message : "Could not delete", true);
+      setDialog(null);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -93,38 +135,51 @@ export function Hotels({ staffKey, canRead, version, notify, onChanged }: Props)
         <span className="count" id="hotelCount">{hotels.length} partner hotels</span>
         <div className="spacer" />
         {canEdit && (
-          <button type="button" className="btn" id="addHotel" onClick={() => setAdding(true)}>Add hotel</button>
+          <button type="button" className="btn primary" id="addHotel" onClick={() => setDialog({ kind: "add" })}>+ Add hotel</button>
         )}
       </div>
-      <table id="hotelsTable">
-        <thead>
-          <tr>{["Hotel", "Location", "Getting there", "Phone", "Bookings", ""].map((x) => <th key={x}>{x}</th>)}</tr>
-        </thead>
-        <tbody>
-          {adding && <HotelForm onSave={(h) => save(h, true)} onCancel={() => setAdding(false)} />}
-          {hotels.map((h) =>
-            editing === h.name ? (
-              <HotelForm key={h.name} initial={h} onSave={(x) => save(x, false)} onCancel={() => setEditing(null)} />
-            ) : (
-              <tr key={h.name}>
-                <td className="ref">{h.name}</td>
-                <td>{h.location}</td>
-                <td>{h.shuttle}</td>
-                <td className="num">{h.phone}</td>
-                <td className="num">{h.bookings}</td>
-                <td className="actions">
-                  {canEdit && (
-                    <>
-                      <button type="button" className="btn small ghost" onClick={() => setEditing(h.name)}>Edit</button>{" "}
-                      <ConfirmButton label="Delete" confirmLabel="Confirm delete" onConfirm={() => remove(h.name)} />
-                    </>
-                  )}
-                </td>
-              </tr>
-            ),
-          )}
-        </tbody>
-      </table>
+      <div className="hotel-grid" id="hotelsTable">
+        {hotels.map((h) => (
+          <article key={h.name} className="hotel-card">
+            <header>
+              <h3>{h.name}</h3>
+              <span className="badge-count">{h.bookings} booking{h.bookings === 1 ? "" : "s"}</span>
+            </header>
+            <dl>
+              <dt>Location</dt><dd>{h.location}</dd>
+              <dt>Getting there</dt><dd>{h.shuttle}</dd>
+              <dt>Phone</dt><dd className="num">{h.phone || "—"}</dd>
+            </dl>
+            {canEdit && (
+              <footer>
+                <button type="button" className="btn small ghost" onClick={() => setDialog({ kind: "edit", hotel: h })}>Edit</button>
+                <button type="button" className="btn small ghost danger-text" onClick={() => setDialog({ kind: "delete", hotel: h })}>Delete</button>
+              </footer>
+            )}
+          </article>
+        ))}
+      </div>
+
+      {(dialog?.kind === "add" || dialog?.kind === "edit") && (
+        <HotelDialog
+          initial={dialog.kind === "edit" ? dialog.hotel : undefined}
+          staffKey={staffKey}
+          onClose={() => setDialog(null)}
+          onSaved={() => { notify("Hotel saved"); setDialog(null); onChanged(); }}
+        />
+      )}
+      {dialog?.kind === "delete" && (
+        <ConfirmDialog
+          title={`Delete ${dialog.hotel.name}?`}
+          message={dialog.hotel.bookings
+            ? <>{dialog.hotel.name} still has <b>{dialog.hotel.bookings} booking(s)</b>. The server will refuse until you move or delete them.</>
+            : <>Passengers will no longer be sent to {dialog.hotel.name}.</>}
+          confirmLabel="Delete hotel"
+          busy={busy}
+          onConfirm={() => remove(dialog.hotel)}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </>
   );
 }

@@ -389,6 +389,7 @@ if (PUBLIC / "assets").is_dir():
 
 
 @app.get("/", include_in_schema=False)
+@app.get("/console", include_in_schema=False)
 def console():
     # Locally we serve the file. On Vercel, files in public/ are served by the CDN,
     # so if the file isn't inside the function we send the browser there instead.

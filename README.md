@@ -53,7 +53,7 @@ flowchart TD
 | Staff approval before cancelling | `interrupt()` and `Command(resume=...)` |
 | Answers stream word by word, over HTTP too | `stream_mode=["updates", "messages"]`, `subgraphs=True`, FastAPI + NDJSON |
 | Survives provider outages | Fallback across providers (Groq ↔ Gemini) + node `RetryPolicy` for 429/503 only |
-| Web console: chat, bookings and hotels editor, approvals inbox | React 19 + TypeScript (Vite) front end; tool calls and their results are streamed so you can check the agent against the data |
+| Landing page and web console: chat, bookings and hotels editor (add, edit, delete, reset in dialogs with validation), status filters, approvals inbox | React 19 + TypeScript (Vite) front end; tool calls and their results are streamed so you can check the agent against the data |
 | Runs on Vercel with persistent memory | SQLite locally, Neon Postgres in production (`PostgresSaver`), chosen by `DATABASE_URL` |
 
 ---
@@ -159,7 +159,7 @@ python db.py                    # create the demo database
 
 | Command | What it does |
 |---|---|
-| `uvicorn api:app --reload` | **Web console** at http://127.0.0.1:8000 (enter `STAFF_API_KEY` in the yellow bar) |
+| `uvicorn api:app --reload` | Landing page at http://127.0.0.1:8000 and the **console** at `/console` (enter `STAFF_API_KEY` in the top bar) |
 | `python step6_desk.py demo` | Chat in the terminal, with staff approval prompts |
 | `python step7_stream.py` | See answers stream token by token |
 | http://127.0.0.1:8000/docs | API documentation |
